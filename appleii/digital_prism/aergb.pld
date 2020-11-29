@@ -1,0 +1,81 @@
+Name     aergb ;
+PartNo   aergb ;
+Date     11/28/2020 ;
+Revision 01 ;
+Designer Renee Harke ;
+Company  None ;
+Assembly None ;
+Location None ;
+Device   g16v8ma ;
+
+
+/**
+ * This is the PAL from the Applied Engineering "RGB Card", which is a piggyback
+ * card for the RamWorks series of cards for the Apple IIe. The card provides a
+ * digital RGB output compatible with the AppleColor Monitor 100.
+ *
+ * This same PAL (along with another one) is also present on the "Digital Prism"
+ * and "Color Link" cards, which might be considered as different revisions of
+ * the same base card.
+ *
+ * The function of the PAL is not changed between the cards. It is involved with
+ * converting the serial video signal from the logic board into an RGB output,
+ * though understanding its exact function would require more research.
+ *
+ * The PAL is generally (always?) labelled "AERGB Q" and is located near the
+ * bottom-left of the card. It is typically an MMI-branded PAL16L8. An ATF16V8
+ * in complex mode can emulate the function of this PAL.
+ *
+ * Thanks to Robert Justice for putting me on to the idea that we have to
+ * express things in negative logic in order to fit the equations on the chip.
+ *
+ * I claim no copyright on this code.
+ */
+
+
+/****** INPUT PINS ******/
+PIN 1 = P1;   /* 80VID  */
+PIN 2 = P2;   /* SEROUT */
+PIN 3 = P3;   /*        */
+PIN 4 = P4;   /*        */
+PIN 5 = P5;   /* LDPS   */
+PIN 6 = P6;   /*        */
+PIN 7 = P7;   /*        */
+PIN 8 = P8;   /*        */
+PIN 9 = P9;   /*        */
+PIN 11 = P11; /*        */
+PIN 16 = P16; /* FRCTXT */
+PIN 18 = P18; /* SEGB   */
+
+/***** OUTPUT PINS ******/
+PIN 12 = P12; /*        */
+PIN 13 = P13; /*        */
+PIN 14 = P14; /*        */
+PIN 15 = P15; /*        */
+PIN 17 = P17; /*        */
+PIN 19 = P19; /*        */
+
+
+!P12 = (!P1 & P9 & !P16 & !P18) # (!P2 & !P3 & P7 & P9 & P16 & !P18) # (!P2 & P3 & !P7 & P9 & P16 & !P18)
+ # (!P4 & P9 & P18) # (!P9 & P11) # (P2 & !P3 & !P7 & P9 & P16 & !P18) # (P2 & P3 & P7 & P9 & P16 & !P18);
+
+!P13 = (!P1 & !P9) # (!P9 & P16) # (P16 & !P18);
+
+/**
+ * Feedback is necessary to express P14 in 7 product terms.
+ *
+ * You can confirm with a logic analyzer that the original PAL does this too;
+ * you can see P13 switch first, and then P14 lags one cycle behind.
+ *
+ * It's possible that P12 and/or P15 were involved in the original equation as
+ * well, but it's not necessary so they probably weren't.
+ */
+!P14 = (!P1 & P5 & P13) # (!P2 & P7 & P9 & !P13) # (P1 & P6 & !P7 & !P16 & !P18) # (P2 & !P7 & P9 & !P13)
+ # (P5 & P9 & P18) # (P6 & !P7 & !P9 & P13) # (P8 & !P9 & !P13);
+
+!P15 = (!P1 & !P9) # (!P1 & !P11 & !P18) # (!P1 & !P16 & P18) # (!P1 & P8 & !P18) # (!P9 & P16) # (P16 & !P18);
+
+!P17 = (!P2 & !P6 & P9 & P16 & !P18) # (!P2 & P3 & !P8 & !P9) # (!P2 & P3 & !P9 & !P11) # (P2 & P6 & P9 & P16 & !P18);
+
+!P19 = (!P1 & !P8 & P9 & !P11 & !P16) # (!P1 & P3 & P9 & !P11 & !P16) # (!P1 & P6 & !P8 & P9 & !P16)
+ # (!P1 & P9 & !P16 & P18) # (P1 & !P2 & !P9 & !P16) # (P1 & !P2 & !P16 & !P18) # (P3 & P9 & P18);

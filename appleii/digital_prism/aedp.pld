@@ -1,0 +1,87 @@
+Name     aedp ;
+PartNo   aedp ;
+Date     11/29/2020 ;
+Revision 01 ;
+Designer Renee Harke ;
+Company  None ;
+Assembly None ;
+Location None ;
+Device   g16v8ma ;
+
+
+/**
+ * This is one of two PALs from the Applied Engineering "Digital Prism" card,
+ * which is a piggyback card for the RamWorks series of cards for the Apple IIe.
+ * The card provides a digital RGB output compatible with the AppleColor Monitor
+ * 100, as well as a digital CGA output compatible with many PC monitors of the
+ * era.
+ *
+ * This same PAL is also present on the "Color Link" card, which might be
+ * considered a different revision of the same card, replacing the digital RGB
+ * output with an analog RGB output compatible with the AppleColor RGB Monitor
+ * from the Apple IIGS.
+ *
+ * The other PAL on this card is shared with the "RGB Card" and the "Color
+ * Link".
+ *
+ * The function of the PAL is not changed between the cards. It is responsible
+ * for mapping XRGB colors to CGA colors, and generating HSYNC/VSYNC.
+ *
+ * The PAL is generally (always?) labelled "AEDP Q" and is located near the
+ * top-right of the card. It is typically an MMI-branded PAL16L8.
+ *
+ * The VSYNC generator is worth calling out. Pin 13 and 15 are connected
+ * through a simple RC circuit which does two things:
+ *  1. Delay the sync signal by a few tens of microseconds.
+ *  2. Removes the HSYNC pulses, in principle generating one long pulse during
+ *     VSYNC.
+ *
+ * I say "in principle" because if you watch the result on a scope, it fails
+ * to filter the first HSYNC pulse that occurs during VSYNC. Actually I've only
+ * tested this on the Color Link, but if you compare the Digital Prism and the
+ * Color Link, you'll note that the resistor is 3600 ohm on the Digital Prism,
+ * and 2200 ohm on the Color Link. I suspect that AE identified this problem
+ * and tried to fix it, but didn't fully succeed.
+ *
+ * Replacing the resistor with something around 1000 ohm seems to generate
+ * clean VSYNC. This seems more necessary if you replace the PAL16L8 with a
+ * ATF16V8, possibly due to different timing or other electrical properties.
+ *
+ * I claim no copyright on this code.
+ */
+
+
+/************* INPUT PINS **************/
+PIN 2 = XINTEN;  /* XRGB intensity     */
+PIN 3 = XBLUE;   /* XRGB blue          */
+PIN 4 = XRED;    /* XRGB red           */
+PIN 5 = XGREEN;  /* XRGB green         */
+PIN 6 = CSYNC;   /* sync               */
+PIN 7 = CLRMAP;  /* sw3: color mapping */
+PIN 9 = INVSYN;  /* sw4: invert sync   */
+PIN 15 = SYNCB;  /* RC buffered CSYNC  */
+
+/************* OUTPUT PINS *************/
+PIN 12 = VSYNC;  /* vsync              */
+PIN 13 = SYNCO;  /* out to RC circuit  */
+PIN 14 = HSYNC;  /* hsync              */
+PIN 16 = CBLUE;  /* CGA blue           */
+PIN 17 = CGREEN; /* CGA green          */
+PIN 18 = CRED;   /* CGA red            */
+PIN 19 = CINTEN; /* CGA intensity      */
+
+
+/* Use buffered CSYNC as VSYNC, inverted if switch is on */
+!VSYNC = (!INVSYN & !SYNCB) # (INVSYN & SYNCB);
+
+/* Send CSYNC to RC delay circuit */
+!SYNCO = (!CSYNC);
+
+/* Use CSYNC as HSYNC, inverted if switch is on */
+!HSYNC = (!CSYNC & !INVSYN) # (CSYNC & INVSYN);
+
+/* Map colors */
+!CBLUE = (!XBLUE & !XRED) # (!XBLUE & !XGREEN) # (!XBLUE & !CLRMAP) # (XINTEN & !XBLUE) # (XINTEN & !XRED & !XGREEN & CLRMAP);
+!CGREEN = (!XINTEN & !XGREEN) # (!XINTEN & XBLUE & !XRED & CLRMAP) # (!XGREEN & !CLRMAP) # (XBLUE & !XGREEN) # (XRED & !XGREEN);
+!CRED = (!XINTEN & !XRED) # (!XINTEN & XBLUE & XGREEN & CLRMAP) # (!XRED & !CLRMAP) # (!XRED & XGREEN) # (XBLUE & !XRED);
+!CINTEN = (!XINTEN & !XBLUE) # (!XINTEN & !XGREEN) # (!XINTEN & !CLRMAP) # (!XINTEN & XRED) # (!XBLUE & !XRED & !XGREEN & CLRMAP);
